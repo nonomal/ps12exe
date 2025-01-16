@@ -13,35 +13,11 @@ if ($version -match '^v(\d+\.\d+\.\d+)$') {
 else {
 	throw "invalid version: $version"
 }
-$script:tabnum = 0
-function PSObjectToString($obj) {
-	if ($obj -is [hashtable]) {
-		$script:tabnum += 1
-		$str = "@{`n" + (($obj.GetEnumerator() | ForEach-Object {
-					"`t" * $script:tabnum
-					$_.Key + ' = ' + $(PSObjectToString($_.Value)) + "`n"
-				}) -join '')
-		$str += "`t" * ($script:tabnum - 1) + "}"
-		$str
-		$script:tabnum -= 1
-	}
-	elseif ($obj -is [array]) {
-		'@(' + (($obj | ForEach-Object {
-					$(PSObjectToString($_))
-					', '
-				} | Select-Object -SkipLast 1) -join '') + ')'
-	}
-	elseif ($obj -is [string]) {
-		"'" + $obj.Replace("'", "''") + "'"
-	}
-	elseif ($obj -is [int]) { $obj }
-	elseif ($obj -is [bool]) { if ($obj) { '$true' } else { '$false' } }
-	else { throw "invalid type: $obj" }
-}
-
-$error.clear()
 
 $repoPath = "$PSScriptRoot/../.."
+. $repoPath/src/PSObjectToString.ps1
+$error.clear()
+
 try {
 	# read psd1
 	$packData = Import-PowerShellDataFile "$repoPath/ps12exe.psd1"
@@ -49,8 +25,12 @@ try {
 	$packData.ModuleVersion = $version
 	# update psd1
 	Set-Content -Path "$repoPath/ps12exe.psd1" -Value $(PSObjectToString($packData)) -NoNewline -Encoding UTF8 -Force
+	# 对于每个fbs文件，以xml格式读取，再用linux换行符+tab缩进写回源文件
+	. $PSScriptRoot/../../.esh/commands/GUIfix.ps1
 	# 遍历文件列表，移除.开头的文件和文件夹
 	Get-ChildItem -Path $repoPath -Recurse | Where-Object { $_.Name -match '^\.' } | ForEach-Object { Remove-Item -Path $_.FullName -Force -Recurse }
+	# 移除docs
+	Remove-Item -Path "$repoPath/docs" -Recurse -Force
 	# 打包发布
 	Install-Module -Name 'PowerShellGet' -Force -Scope CurrentUser | Out-Null
 	$errnum = $Error.Count

@@ -1,59 +1,110 @@
-[CmdletBinding()]
-param (
-	[string]$ConfingFile,
-	#本地化信息
+﻿#Requires -Version 5.0
+
+<#
+.SYNOPSIS
+ps12exeGUI is a GUI tool for ps12exe.
+.DESCRIPTION
+ps12exeGUI is a GUI tool for ps12exe.
+.PARAMETER ConfigFile
+The path of the configuration file.
+.PARAMETER PS1File
+The path of the script file.
+.PARAMETER Localize
+The language code to use.
+.PARAMETER UIMode
+The UI mode to use.
+.PARAMETER help
+Show this help message.
+.EXAMPLE
+ps12exeGUI -Localize 'en-UK' -UIMode 'Light'
+.EXAMPLE
+ps12exeGUI -ConfigFile 'proj.psccfg' -Localize 'en-UK' -UIMode 'Dark'
+.EXAMPLE
+ps12exeGUI -help
+#>
+[CmdletBinding(DefaultParameterSetName = 'ConfigOrPS1File')]
+param(
+	[Parameter(DontShow, ParameterSetName = 'ConfigOrPS1File', Position = 0)]
+	[ValidatePattern('^.*\.(psccfg|xml|ps1)$')]
+	[string]$ConfigOrPS1File,
+	[Parameter(Mandatory, ParameterSetName = 'ConfigFile', Position = 0)]
+	[ValidatePattern('^.*\.(psccfg|xml)$')]
+	[string]$ConfigFile,
+	[Parameter(ParameterSetName = 'ConfigFile')]
+	[Parameter(Mandatory, ParameterSetName = 'Ps1File', Position = 0)]
+	[ValidatePattern('^.*\.ps1$')]
+	[string]$PS1File,
+	#_if PSScript
+		[ArgumentCompleter({
+			Param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+			. "$PSScriptRoot\..\LocaleArgCompleter.ps1" @PSBoundParameters
+		})]
+	#_endif
 	[string]$Localize,
 	[ValidateSet('Light', 'Dark', 'Auto')]
-	[string]$UIMode = 'Auto'
+	[string]$UIMode = 'Auto',
+	[switch]$help
 )
 
-. "$PSScriptRoot\UITools.ps1"
+#_if PSScript
+if ($help) {
+	$LocalizeData = . $PSScriptRoot\..\LocaleLoader.ps1 -Localize $Localize
+	$MyHelp = $LocalizeData.GUIHelpData
+	. $PSScriptRoot\..\HelpShower.ps1 -HelpData $MyHelp | Write-Host
+	return
+}
 
-. "$PSScriptRoot\DialogLoader.ps1"
-
-. "$PSScriptRoot\Functions.ps1"
-
-. "$PSScriptRoot\AutoFixer.ps1"
-
-. "$PSScriptRoot\Events.ps1"
-
-. "$PSScriptRoot\DarkMode.ps1"
-
-#region Other Actions Before ShowDialog
+if ($ConfigOrPS1File) {
+	if ($ConfigOrPS1File -match '\.ps1$') {
+		$PSBoundParameters.PS1File = $ConfigOrPS1File
+	}
+	else {
+		$PSBoundParameters.ConfigFile = $ConfigOrPS1File
+	}
+	$PSBoundParameters.Remove('ConfigOrPS1File') | Out-Null
+}
 
 try {
-	Import-Module "$PSScriptRoot/../../ps12exe.psm1" -Force -ErrorAction Stop
+	# Set Console Window Title
+	$BackUpTitle = $Host.UI.RawUI.WindowTitle
+	$Host.UI.RawUI.WindowTitle = "ps12exe GUI Console Host"
+
+	# Initialize STA Runspace
+	$Runspace = [RunspaceFactory]::CreateRunspace()
+	$Runspace.ApartmentState = 'STA'
+	$Runspace.ThreadOptions = 'ReuseThread'
+	$Runspace.Open()
+
+	# Execute
+	$pwsh = [PowerShell]::Create().AddScript({
+		param ($ScriptRoot, $ConfigFile, $Localize, $UIMode, $PS1File, $help)
+		. "$ScriptRoot\GUIMainScript.ps1"
+	}).AddParameter('ScriptRoot', $PSScriptRoot)
+
+	foreach ($param in $PSBoundParameters.Keys) {
+		$pwsh = $pwsh.AddParameter($param, $PSBoundParameters[$param])
+	}
+
+	$pwsh.RunSpace = $Runspace
+	$pwsh.Invoke()
 }
-catch {
-	Update-ErrorLog -ErrorRecord $_ -Message "Exception encountered when importing ps12exe."
+finally {
+	# Dispose
+	$Runspace.Close()
+	$Runspace.Dispose()
+	$pwsh.Dispose()
+
+	# Restore Console Window Title
+	$Host.UI.RawUI.WindowTitle = $BackUpTitle
 }
-
-#endregion Other Actions Before ShowDialog
-
-# Hide Console Window
-Add-Type -Name Window -Namespace Console -MemberDefinition '
-[DllImport("Kernel32.dll")]
-public static extern IntPtr GetConsoleWindow();
-
-[DllImport("user32.dll")]
-public static extern bool ShowWindow(IntPtr hWnd, Int32 nCmdShow);
-'
-
-$consolePtr = [Console.Window]::GetConsoleWindow()
-[Console.Window]::ShowWindow($consolePtr, 0) | Out-Null
-
-$Icon = [System.Drawing.Icon]::ExtractAssociatedIcon("$PSScriptRoot\..\..\img\icon.ico")
-$Script:refs.MainForm.Icon = $Icon
-
-# Show the form
-try { [void]$Script:refs.MainForm.ShowDialog() } catch { Update-ErrorLog -ErrorRecord $_ -Message "Exception encountered unexpectedly at ShowDialog." }
-
-# Dispose all controls
-$Script:refs.MainForm.Controls | ForEach-Object { $_.Dispose() }
-$Script:refs.MainForm.Dispose()
-$Icon.Dispose()
-
-[Console.Window]::ShowWindow($consolePtr, 1) | Out-Null
-
-# Remove all variables in the script scope
-Get-Variable -Scope Script | Remove-Variable -Scope Script -Force -ErrorAction Ignore
+#_else
+#_require ps12exe
+#_pragma Console 0
+#_pragma iconFile $PSScriptRoot/../../img/icon.ico
+#_pragma title ps12exeGUI
+#_pragma description 'A super cool GUI for compile powershell scripts'
+#_!!if (!(Test-Path -LiteralPath "Registry::HKEY_CURRENT_USER\Software\Classes\ps12exeGUI.psccfg")){
+#_!!	Set-ps12exeContextMenu 1
+#_!!}
+#_!!ps12exeGUI @PSBoundParameters
+#_endif

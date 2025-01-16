@@ -1,12 +1,54 @@
-Add-Type @"
+﻿Add-Type @"
 using System;
+using System.Text;
 using System.Runtime.InteropServices;
-public class Dwm {
-	[DllImport("dwmapi.dll")]
-	public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
-	public static void SetWindowAttribute(IntPtr hwnd, int attr, int attrValue)
-	{
-		DwmSetWindowAttribute(hwnd, attr, ref attrValue, sizeof(int));
+namespace ps12exeGUI {
+	public class Dwm {
+		[DllImport("dwmapi.dll")]
+		public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+		public static void SetWindowAttribute(IntPtr hwnd, int attr, int attrValue)
+		{
+			DwmSetWindowAttribute(hwnd, attr, ref attrValue, sizeof(int));
+		}
+	}
+	public class Win32 {
+		[DllImport("Kernel32.dll", ExactSpelling = true)]
+		public static extern IntPtr GetConsoleWindow();
+		[DllImport("user32.dll")]
+		public static extern bool ShowWindow(IntPtr hWnd, Int32 nCmdShow);
+		[DllImport("winmm.dll")]
+		public static extern Int32 mciSendString(String command, StringBuilder buffer, Int32 bufferSize, IntPtr hwndCallback);
+
+		[ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
+		private class MMDeviceEnumerator {}
+
+		private enum EDataFlow { eRender, eCapture, eAll }
+		private enum ERole { eConsole, eMultimedia, eCommunications }
+
+		[InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
+		private interface IMMDeviceEnumerator {
+			void NotNeeded();
+			IMMDevice GetDefaultAudioEndpoint(EDataFlow dataFlow, ERole role);
+		}
+
+		[InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("D666063F-1587-4E43-81F1-B948E807363F")]
+		private interface IMMDevice {
+			[return: MarshalAs(UnmanagedType.IUnknown)]
+			object Activate([MarshalAs(UnmanagedType.LPStruct)] Guid iid, int dwClsCtx, IntPtr pActivationParams);
+		}
+
+		[InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("C02216F6-8C67-4B5B-9D00-D008E73E0064")]
+		private interface IAudioMeterInformation {
+			float GetPeakValue();
+		}
+
+		public static bool IsPlayingSound() {
+			IMMDeviceEnumerator enumerator = (IMMDeviceEnumerator)(new MMDeviceEnumerator());
+			IMMDevice speakers = enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eMultimedia);
+			IAudioMeterInformation meter = (IAudioMeterInformation)speakers.Activate(typeof(IAudioMeterInformation).GUID, 0, IntPtr.Zero);
+			float value = meter.GetPeakValue();
+			return value > 1E-08;
+		}
 	}
 }
 "@	-ReferencedAssemblies System.Windows.Forms, System.Drawing, System.Drawing.Primitives, System.Net.Primitives, System.ComponentModel.Primitives, Microsoft.Win32.Primitives
@@ -41,9 +83,11 @@ function ConvertFrom-WinFormsXML {
 		if ( $Xml.ToString() -ne 'SplitterPanel' ) { $newControl = New-Object System.Windows.Forms.$($Xml.ToString()) }
 
 		if ( $ParentControl ) {
-			if ( $Xml.ToString() -eq 'ContextMenuStrip' ) { $ParentControl.ContextMenuStrip = $newControl }
-			elseif ( $Xml.ToString() -eq 'SplitterPanel' ) { $newControl = $ParentControl.$($Xml.Name.Split('_')[-1]) }
-			else { $ParentControl.Controls.Add($newControl) }
+			switch ($Xml.ToString()) {
+				'ContextMenuStrip' { $ParentControl.ContextMenuStrip = $newControl }
+				'SplitterPanel' { $newControl = $ParentControl.$($Xml.Name.Split('_')[-1]) }
+				default { $ParentControl.Controls.Add($newControl) }
+			}
 		}
 
 		$Xml.Attributes | ForEach-Object {
@@ -64,17 +108,16 @@ function ConvertFrom-WinFormsXML {
 			elseif ( $null -ne $newControl.$attribName ) {
 				$value = $attrib.Value
 				if ( $newControl.$attribName.GetType().Name -eq 'Boolean' ) {
-					if ( $attrib.Value -eq 'True' ) { $value = $true } else { $value = $false }
+					$value = $attrib.Value -eq 'True'
 				}
 				$newControl.$attribName = $value
 			}
 
 			if (( $attrib.ToString() -eq 'Name' ) -and ( $Reference -ne '' )) {
-				try { $refHashTable = Get-Variable -Name $Reference -Scope Script -ErrorAction Stop }
-				catch {
+				if (-not (Test-Path variable:Script:$Reference)) {
 					New-Variable -Name $Reference -Scope Script -Value @{} | Out-Null
-					$refHashTable = Get-Variable -Name $Reference -Scope Script -ErrorAction SilentlyContinue
 				}
+				$refHashTable = Get-Variable -Name $Reference -Scope Script
 
 				$refHashTable.Value.Add($attrib.Value, $newControl)
 			}

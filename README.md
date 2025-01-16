@@ -1,12 +1,12 @@
 # ps12exe
 
-WARNING: It is strongly advised not to compile scripts from unverified sources using this project due to the following reasons:
+> [!CAUTION]
+> Do not store passwords in source code!  
+> See [localed readme](https://steve02081504.github.io/ps12exe/readme#password-security-stuff) for more details.  
 
-1. ps12exe has the capability to indirectly include scripts from URLs. This implies that scripts from any URL can be incorporated into your script.
-2. ps12exe, through a set of not-so-stringent rules, determines if all or a part of a script could be a constant program, the content of which can be determined at compile time. If such a determination is made, ps12exe will automatically execute this script in an attempt to obtain the output.
+## Introduction
 
-This implies that if you compile a script whose content is unknown to you, there's a high possibility that ps12exe might download and execute a malicious script during the compile time.  
-If you're skeptical, try executing `"while(1){}" | ps12exe -Verbose`.  
+ps12exe is a PowerShell module that allows you to create an executable file from a .ps1 script.  
 
 [![CI](https://github.com/steve02081504/ps12exe/actions/workflows/CI.yml/badge.svg)](https://github.com/steve02081504/ps12exe/actions/workflows/CI.yml)
 [![PSGallery download num](https://img.shields.io/powershellgallery/dt/ps12exe)](https://www.powershellgallery.com/packages/ps12exe)
@@ -18,17 +18,36 @@ If you're skeptical, try executing `"while(1){}" | ps12exe -Verbose`.
 ![repo img](https://repository-images.githubusercontent.com/729678966/3ed3f02f-c7c9-4a18-b1f5-255e667643b6)
 
 [![中文](https://raw.githubusercontent.com/gosquared/flags/master/flags/flags/shiny/48/China.png)](./docs/README_CN.md)
-[![English](https://raw.githubusercontent.com/gosquared/flags/master/flags/flags/shiny/48/United-Kingdom.png)](./docs/README_EN.md)
+[![English (United Kingdom)](https://raw.githubusercontent.com/gosquared/flags/master/flags/flags/shiny/48/United-Kingdom.png)](./docs/README_EN_UK.md)
+[![English (United States)](https://raw.githubusercontent.com/gosquared/flags/master/flags/flags/shiny/48/United-States.png)](./docs/README_EN_US.md)
+[![日本語](https://raw.githubusercontent.com/gosquared/flags/master/flags/flags/shiny/48/Japan.png)](./docs/README_JP.md)
+[![Français](https://raw.githubusercontent.com/gosquared/flags/master/flags/flags/shiny/48/France.png)](./docs/README_FR.md)
+[![Español](https://raw.githubusercontent.com/gosquared/flags/master/flags/flags/shiny/48/Spain.png)](./docs/README_ES.md)
+[![हिन्दी](https://raw.githubusercontent.com/gosquared/flags/master/flags/flags/shiny/48/India.png)](./docs/README_HI.md)
 
 ## Install
 
 ```powershell
-Install-Module ps12exe
+Install-Module ps12exe #Install ps12exe module
+Set-ps12exeContextMenu #Set right-click menu
 ```
 
 (you can also clone this repository and run `./ps12exe.ps1` directly)
 
+**Hard to upgrade from PS2EXE to ps12exe? No problem!**  
+PS2EXE2ps12exe can hooks PS2EXE calls into ps12exe, All you need is just uninstall PS2EXE and install this, then use PS2EXE as normal.
+
+```powershell
+Uninstall-Module PS2EXE
+Install-Module PS2EXE2ps12exe
+```
+
 ## Usage
+
+### Right-click menu
+
+Once you have set `Set-ps12exeContextMenu`, you can quickly compile any ps1 file into an exe or open ps12exeGUI on this file by right-clicking on it.  
+![image](https://github.com/steve02081504/ps12exe/assets/31927825/24e7caf7-2bd8-46aa-8e1d-ee6da44c2dcc)
 
 ### GUI mode
 
@@ -50,15 +69,29 @@ compiles `source.ps1` into the executable target.exe (if `.\target.exe` is omitt
 
 compiles `"Hello World!"` into the executable `.\a.exe`.
 
+```powershell
+ps12exe https://raw.githubusercontent.com/steve02081504/ps12exe/master/src/GUI/Main.ps1
+```
+
+compiles `Main.ps1` from the internet into the executable `.\Main.exe`.
+
+### Self-Host WebServer
+
+```powershell
+Start-ps12exeWebServer
+```
+
+Starts a web server that can be used to compile powerShell scripts online.
+
 ## Comparative Advantages 🏆
 
 ### Quick Comparison 🏁
 
 | Comparison Content | ps12exe | [`MScholtes/PS2EXE@678a892`](https://github.com/MScholtes/PS2EXE/tree/678a89270f4ef4b636b69db46b31e1b4e0a9e1c5) |
 | --- | --- | --- |
-| Pure script repository 📦 | ✔️ All text files except images | ❌ Contains exe files with open source license |
-| Command to generate hello world 🌍 | 😎`'"Hello World!"' \| ps12exe` | 🤔`echo "Hello World!" *> a.ps1; ps2exe a.ps1; rm a.ps1` |
-| Size of the generated hello world executable file 💾 | 🥰3584 bytes | 😨25088 bytes |
+| Pure script repository 📦 | ✔️ All text files except images & dependencies | ❌ Contains exe files with open source license |
+| Command to generate hello world 🌍 | 😎`'"Hello World!"' \| ps12exe` | 🤔`echo "Hello World!" *> a.ps1; PS2EXE a.ps1; rm a.ps1` |
+| Size of the generated hello world executable file 💾 | 🥰1024 bytes | 😨25088 bytes |
 | GUI multilingual support 🌐 | ✔️ | ❌ |
 | Syntax check during compilation ✔️ | ✔️ | ❌ |
 | Preprocessing feature 🔄 | ✔️ | ❌ |
@@ -82,4 +115,4 @@ Compared to [`MScholtes/PS2EXE@678a892`](https://github.com/MScholtes/PS2EXE/tre
 | 📖 Separated cs files from ps1 files | Easier to read and maintain |
 | 🚀 More improvements | And more... |
 
-see [English docs](./docs/README_EN.md) for more details.
+see [localed readme](https://steve02081504.github.io/ps12exe/readme) for more details.

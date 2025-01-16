@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<meta charset="utf-8"/>
+<meta name="title" content="ps12exe Online"/>
+<meta name="description" content="A super cool online compiler for powershell scripts"/>
+<meta property="og:image" content="https://repository-images.githubusercontent.com/729678966/3ed3f02f-c7c9-4a18-b1f5-255e667643b6"/>
+<meta property="og:image:alt" content="A super cool online compiler for powershell scripts"/>
+<meta property="og:type" content="object"/>
+<meta property="og:title" content="ps12exe Online"/>
+<meta property="og:description" content="A super cool online compiler for powershell scripts"/>
+<html>
+
+<head>
+	<title>ps12exe Online</title>
+	<link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/steve02081504/ps12exe/master/img/icon.ico"/>
+	<script src='https://www.midijs.net/lib/midi.js'></script>
+	<script src="https://cdn.jsdelivr.net/npm/darkreader"></script>
+	<script>
+		DarkReader.setFetchMethod(window.fetch)
+		DarkReader.enable()
+		var HighlightCode;
+		function SetDarkMode(Set) {
+			if (Set) DarkReader.enable()
+			else DarkReader.disable()
+			HighlightCode.useTheme(Set ? 'github-dark' : 'github')
+		}
+		(async ({ chrome, netscape }) => {
+			if (!chrome && !netscape) await import('https://cdn.jsdelivr.net/npm/@ungap/custom-elements')
+			HighlightCode = await import('https://cdn.jsdelivr.net/npm/highlighted-code/min.js').then(x => x.default)
+			var dark = window.matchMedia('(prefers-color-scheme: dark)');
+			SetDarkMode(dark.matches)
+			dark.addEventListener('change', event => {
+				SetDarkMode(event.matches)
+			})
+		})(self)
+	</script>
+</head>
+
+<body>
+	<textarea style="width: 98%; height:95vh;" is="highlighted-code" language="powershell" tabSize="4" placeholder="#_pragma noConsole
+'Hello 世界！👾'
+" id="inputText">#_pragma noConsole
+'Hello 世界！👾'
+</textarea>
+	<br/>
+	<button id="compileButton" onclick="compileCode()">cum out</button>
+	<script type="text/javascript">
+		let translations = {
+			'zh-CN': { compileButtonText: '编译', compileMessage: '已将编译用的Powershell代码复制到剪切板！\n现在你只需要在Powershell里粘贴并运行代码就可以得到编译结果了！' },
+			'zh-TW': { compileButtonText: '編譯', compileMessage: '已將編譯用的Powershell代碼複製到剪貼簿！\n現在你只需要在Powershell裡粘貼並執行代碼就可以得到編譯結果了！' },
+			'zh-HK': { compileButtonText: '編譯', compileMessage: '已將編譯用的Powershell代碼複製到剪貼簿！\n現在你只需要在Powershell裡粘貼並執行代碼就可以得到編譯結果了！' },
+			'es-ES': { compileButtonText: 'compilar', compileMessage: 'Se ha copiado el código de Powershell para compilar en el portapapeles. Ahora solo necesitas pegarlo y ejecutarlo en Powershell para obtener el resultado de la compilación.' },
+			'ja-JP': { compileButtonText: 'コンパイル', compileMessage: 'Powershellのコンパイル用コードがクリップボードにコピーされました！\nこれをPowershellに貼り付けて実行するだけで、コンパイル結果が得られます！' },
+			'ko-KR': { compileButtonText: '컴파일', compileMessage: 'Powershell 코드를 컴파일하기 위한 내용이 클립보드에 복사되었습니다! 이제 Powershell에서 해당 코드를 붙여넣고 실행하면 컴파일 결과를 얻을 수 있습니다!' },
+			'ru-RU': { compileButtonText: 'компилировать', compileMessage: 'Код для компиляции на Powershell был скопирован в буфер обмена! Теперь вам нужно просто вставить его в Powershell и выполнить, чтобы получить результат компиляции!' },
+			'en-UK': { compileButtonText: 'compile', compileMessage: 'The Powershell code for compilation has been copied to the clipboard! Now you just need to paste and run the code in Powershell to get the compilation result!' },
+			'pt-PT': { compileButtonText: 'compilar', compileMessage: 'O código Powershell para compilação foi copiado para a área de transferência! Agora você só precisa colar e executar o código no Powershell para obter o resultado da compilação!' }
+		}
+		for (const key of Object.keys(translations)) translations[key.split('-')[0]] ??= translations[key]
+
+		let language = navigator.language || navigator.userLanguage || 'en'
+		if (!translations[language]) language = language.split('-')[0]
+		if (!translations[language]) language = 'en'
+		const { compileButtonText, compileMessage } = translations[language]
+
+		const compileButton = document.getElementById('compileButton')
+		const inputText = document.getElementById('inputText')
+		var playing = false
+		inputText.addEventListener("focus", event => {
+			if (playing) MIDIjs.resume()
+			else MIDIjs.play('https://raw.githubusercontent.com/steve02081504/ps12exe/master/src/bin/Unravel.mid', true)
+			playing = true;
+		})
+		inputText.addEventListener("blur", event => MIDIjs.pause())
+
+		compileButton.textContent = compileButtonText
+		function compileCode() {
+			var code = inputText.value
+			var compileCodebase = code.replace(/\'/g, "''")
+			var compileCode = "if (-not (Get-Module -ListAvailable ps12exe)) { Install-Module ps12exe -Force -Scope CurrentUser };" +
+			"'"+compileCodebase+"' | ps12exe"
+			navigator.clipboard.writeText(compileCode)
+			alert(compileMessage)
+		}
+	</script>
+</body>
+
+</html>

@@ -1,4 +1,4 @@
-// Simple PowerShell host created by Ingo Karstein (http://blog.karstein-consulting.com)
+﻿// Simple PowerShell host created by Ingo Karstein (http://blog.karstein-consulting.com)
 // Reworked and GUI support by Markus Scholtes
 
 using System;
@@ -27,36 +27,38 @@ using System.Runtime.Versioning;
 #endif
 #if winFormsDPIAware
 	[assembly: TargetFrameworkAttribute("$TargetFramework,Profile=Client")]
-#else
-	[assembly: TargetFrameworkAttribute("$TargetFramework")]
 #endif
 
 namespace PSRunnerNS {
-	internal class PSRunner {
+	internal static class PSRunnerEntry {
 		private static int Main() {
-			#if UNICODEEncoding && !noConsole
-			System.Console.OutputEncoding = new System.Text.UnicodeEncoding();
-			#endif
+			#if !noOutput
+				#if UNICODEEncoding && !noConsole
+				System.Console.OutputEncoding = new System.Text.UnicodeEncoding();
+				#endif
 
-			#if!noVisualStyles && noConsole
-			Application.EnableVisualStyles();
-			#endif
+				#if !noVisualStyles && noConsole
+				Application.EnableVisualStyles();
+				#endif
 
-			#if noConsole
-				// load assembly:AssemblyTitle
-				AssemblyTitleAttribute titleAttribute = (AssemblyTitleAttribute) Attribute.GetCustomAttribute(Assembly.GetExecutingAssembly(), typeof (AssemblyTitleAttribute));
-				string title;
-				if (titleAttribute != null)
-					title = titleAttribute.Title;
-				else
-					title = System.AppDomain.CurrentDomain.FriendlyName;
-				// 弹窗输出$ConstResult
-				MessageBox.Show("$ConstResult", title, MessageBoxButtons.OK);
-			#else
-				// 控制台输出$ConstResult
-				System.Console.WriteLine("$ConstResult");
+				#if noConsole
+					// load assembly:AssemblyTitle
+					AssemblyTitleAttribute titleAttribute = (AssemblyTitleAttribute) Attribute.GetCustomAttribute(Assembly.GetExecutingAssembly(), typeof(AssemblyTitleAttribute));
+					string title;
+					if (titleAttribute != null)
+						title = titleAttribute.Title;
+					else
+						title = System.AppDomain.CurrentDomain.FriendlyName;
+					// 弹窗输出 \ConstResult
+					string[] ConstResult = { "$ConstResult" };
+					foreach (string item in ConstResult)
+						MessageBox.Show(item, title, MessageBoxButtons.OK);
+				#else
+					// 控制台输出 \ConstResult
+					System.Console.WriteLine("$ConstResult");
+				#endif
 			#endif
-			return 0;
+			return $ConstExitCodeResult;
 		}
 	}
 }

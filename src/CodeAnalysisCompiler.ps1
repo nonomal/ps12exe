@@ -1,4 +1,4 @@
-Add-Type -AssemblyName "Microsoft.CodeAnalysis"
+﻿Add-Type -AssemblyName "Microsoft.CodeAnalysis"
 Add-Type -AssemblyName "Microsoft.CodeAnalysis.CSharp"
 
 $references = $referenceAssembies | ForEach-Object {
@@ -6,13 +6,13 @@ $references = $referenceAssembies | ForEach-Object {
 }
 
 $compilationOptions = New-Object Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions($(
-		if ($noConsole) {
-			[Microsoft.CodeAnalysis.OutputKind]::WindowsApplication
-		}
-		else {
-			[Microsoft.CodeAnalysis.OutputKind]::ConsoleApplication
-		}
-	))
+	if ($noConsole) {
+		[Microsoft.CodeAnalysis.OutputKind]::WindowsApplication
+	}
+	else {
+		[Microsoft.CodeAnalysis.OutputKind]::ConsoleApplication
+	}
+))
 
 # Get a default CSharpParseOptions instance
 $parseOptions = [Microsoft.CodeAnalysis.CSharp.CSharpParseOptions]::Default
@@ -25,29 +25,29 @@ if ($iconFile) {
 }
 if (!$virtualize) {
 	$compilationOptions = $compilationOptions.WithPlatform($(
-			switch ($architecture) {
-				"x86" { [Microsoft.CodeAnalysis.Platform]::X86 }
-				"x64" { [Microsoft.CodeAnalysis.Platform]::X64 }
-				"anycpu" { [Microsoft.CodeAnalysis.Platform]::AnyCpu }
-				default {
-					Write-Warning "Invalid platform $architecture, using AnyCpu"
-					[Microsoft.CodeAnalysis.Platform]::AnyCpu
-				}
-			})
+		switch ($architecture) {
+			"x86" { [Microsoft.CodeAnalysis.Platform]::X86 }
+			"x64" { [Microsoft.CodeAnalysis.Platform]::X64 }
+			"anycpu" { [Microsoft.CodeAnalysis.Platform]::AnyCpu }
+			default {
+				Write-I18n Warning InvalidArchitecture $architecture
+				[Microsoft.CodeAnalysis.Platform]::AnyCpu
+			}
+		})
 	)
 }
 else {
-	Write-Host "Application virtualization is activated, forcing x86 platfom."
+	Write-I18n Host ForceX86byVirtualization
 	$compilationOptions = $compilationOptions.WithPlatform([Microsoft.CodeAnalysis.Platform.X86])
 }
 $compilationOptions = $compilationOptions.WithOptimizationLevel($(
-		if ($prepareDebug) {
-			[Microsoft.CodeAnalysis.OptimizationLevel]::Debug
-		}
-		else {
-			[Microsoft.CodeAnalysis.OptimizationLevel]::Release
-		}
-	))
+	if ($prepareDebug) {
+		[Microsoft.CodeAnalysis.OptimizationLevel]::Debug
+	}
+	else {
+		[Microsoft.CodeAnalysis.OptimizationLevel]::Release
+	}
+))
 
 $treeArray = New-Object System.Collections.Generic.List[Microsoft.CodeAnalysis.SyntaxTree]
 $treeArray.Add($tree)
@@ -61,7 +61,7 @@ $compilation = [Microsoft.CodeAnalysis.CSharp.CSharpCompilation]::Create(
 	$compilationOptions
 )
 
-if (!$IsConstProgram) {
+if (!$AstAnalyzeResult.IsConst) {
 	$resourceDescription = New-Object Microsoft.CodeAnalysis.Emit.EmbeddedResource("$TempDir\main.ps1", [Microsoft.CodeAnalysis.ResourceDescriptionKind]::Embedded)
 	$compilation = $compilation.AddReferences($resourceDescription)
 }
@@ -80,8 +80,6 @@ $peStream.Close()
 if ($prepareDebug) {
 	$pdbStream.Close()
 }
-
-Write-Host "Compiling file..."
 
 if (!$emitResult.Success) {
 	throw $emitResult.Diagnostics -join "`n"
